@@ -1,0 +1,6 @@
+name: HeroCool
+runtime:
+  name: python
+  options:
+    virtualenv: venv
+description: A HeroCool clone (for learning purposes)
