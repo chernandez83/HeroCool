@@ -1,5 +1,3 @@
-from crypt import methods
-from unicodedata import name
 from flask import (Blueprint, current_app, request, flash, 
                    redirect, url_for, render_template)
 
@@ -54,7 +52,7 @@ def create_pulumi_program(keydata: str, instance_type=str):
         ami=ami.id
     )
     
-    pulumi.export('instace_type', server.instance_type)
+    pulumi.export('instance_type', server.instance_type)
     pulumi.export('public_key', keypair.public_key)
     pulumi.export('public_ip', server.public_ip)
     pulumi.export('public_dns', server.public_dns)
@@ -73,7 +71,7 @@ def create_vm():
             # Create a new stack, generating a pulumi program on the fly from the POST body
             stack = auto.create_stack(
                 stack_name=str(stack_name),
-                project_name=current_app.config['PROJECT_NAME']
+                project_name=current_app.config['PROJECT_NAME'],
                 program=pulumi_program
             )
             stack.set_config('aws:region', auto.ConfigValue('us-west-1'))
@@ -85,7 +83,7 @@ def create_vm():
         return redirect(url_for('virtual_machines.list_vms'))
     
     current_app.logger.info(f'Instance types: {instance_types}')
-    return render_template('virtualmachines/create.html', instance_types=instance_types, curr_instance_type=None)
+    return render_template('virtual_machines/create.html', instance_types=instance_types, curr_instance_type=None)
 
 @bp.route('/', methods=['GET'])
 def list_vms():
@@ -102,7 +100,7 @@ def list_vms():
         all_stacks = ws.list_stacks()
         for stack in all_stacks:
             stack = auto.select_stack(
-                stack_name=stack_name,
+                stack_name=stack.name,
                 project_name=project_name,
                 # Just get the outputs
                 program=lambda: None
@@ -112,7 +110,7 @@ def list_vms():
                 vms.append(
                     {
                         'name': stack.name,
-                        'dns_name': f'{outs['public_dns'].value}',
+                        'dns_name': f'{outs["public_dns"].value}',
                         'console_url': f'https://app.pulumi.com/{org_name}/{project_name}/{stack.name}'
                     }
                 )
@@ -138,7 +136,7 @@ def update_vm(id: str):
         try:
             stack = auto.select_stack(
                 stack_name=stack_name,
-                project_name=current_app.config['PROJECT_NAME']
+                project_name=current_app.config['PROJECT_NAME'],
                 program=pulumi_program
             )
             stack.set_config('aws:region', auto.ConfigValue('us-west-1'))
@@ -165,7 +163,7 @@ def update_vm(id: str):
     return render_template('virtual_machines/update.html', name=stack_name, public_key=pk,
                            instance_types=instance_types, curr_instance_type=instance_type.value)
 
-@bp.route('/<string:id>/dalate')
+@bp.route('/<string:id>/delete', methods=['POST'])
 def delete_vm(id: str):
     stack_name = id
     try:
@@ -176,7 +174,7 @@ def delete_vm(id: str):
             program=lambda: None
         )
         stack.destroy(on_output=print)
-        stack.workspace.remove(stack_name)
+        stack.workspace.remove_stack(stack_name)
         flash(f'VM "{stack_name}" successfully deleted!', category='success')
     except auto.ConcurrentUpdateError:
         flash(f'Error: VM "{stack_name}" already has an update in progress', category='danger')

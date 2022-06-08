@@ -1,4 +1,3 @@
-from crypt import methods
 import json
 import requests
 from flask import (
@@ -38,14 +37,16 @@ def create_pulumi_program(content: str):
         'bucket-policy',
         bucket=site_bucket.id,
         policy=site_bucket.id.apply(
-            lambda id: json.dumps(
-                'Version': '2012-10-17',
-                'Statement': {
-                    'Effect': 'Allow',
-                    'Principal': '*',
-                    'Action': ['s3:GetObject'],
-                    # Policy refers to bucket explicitly
-                    'Resource': [f'arn:aws:s3:::{id}/*']
+            lambda id: json.dumps( 
+                {
+                    'Version': '2012-10-17',
+                    'Statement': {
+                        'Effect': 'Allow',
+                        'Principal': '*',
+                        'Action': ['s3:GetObject'],
+                        # Policy refers to bucket explicitly
+                        'Resource': [f'arn:aws:s3:::{id}/*']
+                    }
                 }
             )
         )
@@ -73,7 +74,7 @@ def create_site():
             # Create a new stack, generating our pulumi program on the fly from the POST body
             stack = auto.create_stack(
                 stack_name=str(stack_name),
-                project_name=current_app.config['PROJECT_NAME']
+                project_name=current_app.config['PROJECT_NAME'],
                 program=pulumi_program
             )
             stack.set_config('aws:region', auto.ConfigValue('us-west-1'))
@@ -82,6 +83,10 @@ def create_site():
             flash(f'Successfully create site "{stack_name}"', category='succcess')
         except auto.StackAlreadyExistsError:
             flash(f'Error: Site with name "{stack_name}" already exists, pick a unique name please', catagory='danger')
+        
+        return redirect(url_for('sites.list_sites'))
+    # GET
+    return render_template('sites/create.html')
 
 @bp.route('/', methods=['GET'])
 def list_sites():
@@ -109,7 +114,7 @@ def list_sites():
                     {
                         'name': stack.name,
                         'url': f'http://{outs["website_url"].value}',
-                        'console_url': f'https://app.pulumi.org/{org_name}/{project_name}/{stack.name}'
+                        'console_url': f'https://app.pulumi.com/{org_name}/{project_name}/{stack.name}'
                     }
                 )
     except Exception as exn:
@@ -154,12 +159,12 @@ def update_site(id: str):
         program=lambda: None
     )
     outs = stack.outputs()
-    content_output = outs.get('website_contect')
+    content_output = outs.get('website_content')
     content = content_output.value if content_output else None
     return render_template('sites/update.html', name=stack_name, content=content)
 
 @bp.route('/<string:id>/delete', methods=['POST'])
-def delete_site():
+def delete_site(id: str):
     stack_name = id
     try:
         stack = auto.select_stack(
