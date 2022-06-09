@@ -1,6 +1,6 @@
 ## HeroCool
 
-On Windows 10, set this environment variables in PowerShell before running:
+On Windows 10, set these environment variables in PowerShell before running:
 
 ```sh
 $env:FLASK_RUN_PORT=1337
