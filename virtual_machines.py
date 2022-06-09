@@ -8,7 +8,9 @@ import os
 from pathlib import Path
 
 bp = Blueprint('virtual_machines', __name__, url_prefix='/vms')
-instance_types = ['c5.xlarge', 'p2.xlarge', 'p3.xlarge']
+#instance_types = ['c5.xlarge', 'p2.xlarge', 'p3.xlarge']
+# Change instance_types to free tier
+instance_types = ['t2.micro', 't3.micro']
 
 def create_pulumi_program(keydata: str, instance_type=str):
     # Choose the latest  minimal amzn2 Linux AMI
